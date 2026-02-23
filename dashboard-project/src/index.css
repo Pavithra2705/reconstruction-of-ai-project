@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    /* Slate 50 */
+    --foreground: 222 47% 11%;
+    /* Slate 900 */
+
+    --primary: 243 75% 59%;
+    /* Indigo/Violet */
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --accent: 221 83% 53%;
+    /* Blue */
+    --accent-foreground: 210 40% 98%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 243 75% 59%;
+
+    --radius: 1rem;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-xl shadow-slate-200/50 rounded-2xl transition-all duration-300;
+  }
+
+  .glass-card:hover {
+    @apply bg-white/80 border-white/40 shadow-2xl shadow-indigo-100/50 -translate-y-1;
+  }
+
+  .nav-button {
+    @apply px-4 py-2 rounded-xl text-slate-500 font-medium transition-all duration-200 hover:text-indigo-600 hover:bg-indigo-50/50;
+  }
+
+  .nav-button-active {
+    @apply px-4 py-2 rounded-xl text-indigo-600 bg-indigo-50 font-semibold shadow-sm;
+  }
+
+  .premium-button {
+    @apply px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:shadow-indigo-300 hover:scale-[1.02] active:scale-[0.98] transition-all;
+  }
+
+  .ai-badge {
+    @apply px-3 py-1 bg-indigo-50 text-indigo-600 text-[10px] font-bold uppercase tracking-wider rounded-full border border-indigo-100 animate-pulse-subtle;
+  }
+
+  .trend-badge {
+    @apply px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-0.5;
+  }
+
+  .trend-up {
+    @apply bg-emerald-50 text-emerald-600 border border-emerald-100;
+  }
+
+  .trend-down {
+    @apply bg-rose-50 text-rose-600 border border-rose-100;
+  }
+
+  .trend-neutral {
+    @apply bg-slate-50 text-slate-400 border border-slate-100;
+  }
+
+  .metrics-sidebar {
+    @apply flex flex-col gap-4 w-[320px] p-8 h-[calc(100vh-80px)] overflow-y-auto border-r border-slate-100 bg-white/40;
+  }
+}
+
+body {
+  @apply bg-slate-50 text-slate-900;
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-slate-200 rounded-full hover:bg-slate-300 transition-colors;
+}
+
+@keyframes countUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-count-up {
+  animation: countUp 0.5s ease-out forwards;
+}

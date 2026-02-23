@@ -1,0 +1,41 @@
+# ----------------------------
+# Core Frameworks
+# ----------------------------
+streamlit
+flask
+
+# ----------------------------
+# Data Handling & Processing
+# ----------------------------
+pandas
+numpy
+openpyxl
+XlsxWriter
+scikit-learn
+
+# ----------------------------
+# Visualization Libraries
+# ----------------------------
+plotly
+kaleido
+matplotlib
+seaborn
+
+# ----------------------------
+# AI Integration & APIs
+# ----------------------------
+requests
+tqdm
+python-dotenv
+ollama
+
+# ----------------------------
+# Reporting & Export
+# ----------------------------
+reportlab
+
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic==2.5.3
+websockets==12.0
+python-multipart==0.0.6
