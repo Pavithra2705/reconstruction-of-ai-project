@@ -3,10 +3,12 @@
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { motion } from "framer-motion";
-import { Upload, File, CheckCircle2, XCircle, FileSpreadsheet } from "lucide-react";
+import { Upload, File, CheckCircle2, FileSpreadsheet } from "lucide-react";
 import Link from "next/link";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+import { API_BASE } from "@/lib/api";
+
+const API = API_BASE;
 
 export default function UploadPage() {
     const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -45,8 +47,9 @@ export default function UploadPage() {
                     alert(`Upload failed: ${errorData.message || response.statusText}`);
                 }
             } catch (error) {
-                console.error('Error uploading file:', error);
-                alert("Error connecting to the storage engine. Please ensure the backend is running.");
+                console.error("Error uploading file:", error);
+                const message = error instanceof Error ? error.message : String(error);
+                alert(`Error connecting to the backend: ${message}`);
             } finally {
                 setUploading(false);
             }

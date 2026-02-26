@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-import streamlit as st
 import io
 import base64
 from datetime import datetime
@@ -66,17 +65,6 @@ class FileHandler:
         Get file size in MB
         """
         return len(file.getvalue()) / (1024 * 1024)
-
-def download_button_with_data(data, filename, label, mime_type="text/csv"):
-    """
-    Create a download button for data
-    """
-    return st.download_button(
-        label=label,
-        data=data,
-        file_name=filename,
-        mime=mime_type
-    )
 
 def create_download_link(df, filename, file_format="csv"):
     """

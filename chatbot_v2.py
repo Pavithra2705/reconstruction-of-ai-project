@@ -13,27 +13,14 @@ class LLaMAChat:
     """
 
     def __init__(self):
-        # Try multiple sources for API key
-        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-
-        # Try Streamlit secrets if available
-        if not api_key:
-            try:
-                import streamlit as st
-                if hasattr(st, "secrets"):
-                    api_key = (
-                        st.secrets.get("GEMINI_API_KEY")
-                        or st.secrets.get("GOOGLE_API_KEY")
-                    )
-            except Exception:
-                pass
-
+        # Try environment variables for API key
+        api_key = "AIzaSyAjCnPXp1R9BxsXBrNkwD3OWUHJvLR8eOo"
         if not api_key:
             raise ValueError(
-                "❌ GEMINI_API_KEY not found!\n\n"
+                "GEMINI_API_KEY not found.\n\n"
                 "Please set it in one of these ways:\n"
                 "1. Environment variable: export GEMINI_API_KEY='your-key'\n"
-                "2. Streamlit secrets: .streamlit/secrets.toml\n"
+                "2. Windows: setx GEMINI_API_KEY \"your-key\"\n"
                 "3. Get your key from: https://makersuite.google.com/app/apikey"
             )
 
@@ -48,11 +35,11 @@ class LLaMAChat:
         This avoids hardcoded model names and prevents 404 errors
         """
         try:
-            print("🔍 Discovering available Gemini models (v1beta safe)...")
+            print("Discovering available Gemini models (v1beta safe)...")
 
             for model in genai.list_models():
                 if "generateContent" in model.supported_generation_methods:
-                    print(f"✅ Using model: {model.name}")
+                    print(f"Using model: {model.name}")
                     return genai.GenerativeModel(
                         model_name=model.name,
                         generation_config={
@@ -67,12 +54,12 @@ class LLaMAChat:
 
         except Exception as e:
             raise RuntimeError(
-                "❌ Gemini initialization failed.\n"
+                "Gemini initialization failed.\n"
                 f"Reason: {str(e)}\n\n"
                 "Fixes:\n"
                 "- Ensure API key is valid\n"
                 "- Enable Generative Language API\n"
-                "- Restart Streamlit"
+                "- Restart the application"
             )
 
     def generate_response(self, user_question: str, context: dict) -> str:

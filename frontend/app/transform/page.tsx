@@ -4,7 +4,9 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Shuffle, Plus, Trash2, ChevronDown, CheckCircle2, AlertTriangle, RefreshCw } from "lucide-react";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+import { API_BASE } from "@/lib/api";
+
+const API = API_BASE;
 
 type TransformType = "filter_rows" | "drop_columns" | "rename_column" | "sort_data" | "group_aggregate" | "bin_column" | "normalize_column" | "convert_type" | "extract_datetime";
 

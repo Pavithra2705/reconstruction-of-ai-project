@@ -4,7 +4,9 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Sparkles, CheckCircle2, AlertTriangle, RefreshCw, Database, Trash2, ArrowRight, BarChart2 } from "lucide-react";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+import { API_BASE } from "@/lib/api";
+
+const API = API_BASE;
 
 interface CleaningReport {
     summary?: { original_shape?: number[]; final_shape?: number[]; rows_removed?: number; cleaning_efficiency?: string };

@@ -4,7 +4,9 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Lightbulb, AlertTriangle, TrendingUp, BarChart2, Database, CheckCircle2, Link2 } from "lucide-react";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+import { API_BASE } from "@/lib/api";
+
+const API = API_BASE;
 
 interface Recommendation { type: string; priority: "high" | "medium" | "low"; message: string; }
 interface Correlation { variable_1: string; variable_2: string; correlation: number; strength: string; }

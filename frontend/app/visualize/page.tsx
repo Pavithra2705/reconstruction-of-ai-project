@@ -10,7 +10,9 @@ import {
     X, Cpu, Sparkles, Activity, AlertTriangle, CheckCircle2, ChevronRight
 } from "lucide-react";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+import { API_BASE } from "@/lib/api";
+
+const API = API_BASE;
 
 interface KPI { label: string; value: string; icon: React.ElementType; color: string; change?: string }
 interface Message { role: "user" | "ai"; content: string }

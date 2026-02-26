@@ -44,7 +44,7 @@ class GlobalState:
         try:
             self.chatbot = LLaMAChat()
         except Exception as e:
-            print(f"⚠️ Chatbot initialization deferred: {e}")
+            print(f"Chatbot initialization deferred: {e}")
 
 state = GlobalState()
 
@@ -213,10 +213,29 @@ async def get_dashboard_data():
     if cat_cols and num_cols:
         cat_grp = state.cleaned_df.groupby(cat_cols[0])[num_cols[0]].mean()
         category_data = [{"name": str(k), "value": round(float(v), 2)} for k, v in cat_grp.head(10).items()]
+    # Chart-ready payload for frontend (API contract: trend chart data, data summary)
+    charts = []
+    if trend_data:
+        charts.append({
+            "type": "line",
+            "title": "Trend",
+            "xKey": "id",
+            "yKey": "value",
+            "data": trend_data,
+        })
+    if category_data:
+        charts.append({
+            "type": "bar",
+            "title": "Category",
+            "xKey": "name",
+            "yKey": "value",
+            "data": category_data,
+        })
     return {
         "metrics": kpis,
         "trends": trend_data,
         "category_data": category_data,
+        "charts": charts,
         "num_cols": num_cols,
         "cat_cols": cat_cols,
         "summary": _clean_json(state.insights.get('dataset_overview', {})),
@@ -224,7 +243,7 @@ async def get_dashboard_data():
     }
 
 # ─────────────────────────────────────────────
-#  INSIGHTS
+#  INSIGHTS (GET /insights and GET /insight per API contract)
 # ─────────────────────────────────────────────
 @app.get("/insights")
 async def get_ai_insights():
@@ -241,6 +260,12 @@ async def get_ai_insights():
         "distributions": clean.get('distributions', {}),
         "dataset_overview": clean.get('dataset_overview', {}),
     }
+
+
+@app.get("/insight")
+async def get_ai_insight_alias():
+    """Alias for /insights per API contract (GET /insight)."""
+    return await get_ai_insights()
 
 # ─────────────────────────────────────────────
 #  ADVANCED STATS

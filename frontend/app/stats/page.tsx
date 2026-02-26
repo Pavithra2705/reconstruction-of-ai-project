@@ -4,7 +4,9 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { FlaskConical, Activity, AlertCircle, CheckCircle2, ChevronDown, Play, Zap } from "lucide-react";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+import { API_BASE } from "@/lib/api";
+
+const API = API_BASE;
 
 interface DistInfo {
     column: string; count: number; mean: number; median: number; std: number;

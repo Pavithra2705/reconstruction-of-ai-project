@@ -4,7 +4,9 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { MessageSquare, Send, Database, BarChart2, Users, Cpu, Sparkles } from "lucide-react";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+import { API_BASE } from "@/lib/api";
+
+const API = API_BASE;
 
 interface Message { role: "user" | "ai"; content: string; }
 interface ColumnsData { columns: string[]; shape: { rows: number; columns: number }; numeric_columns: string[]; categorical_columns: string[] }
