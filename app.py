@@ -68,6 +68,27 @@ def _clean_json(data):
     import json as _json
     return _json.loads(_json.dumps(data, default=_serialize))
 
+# ── ✅ NEW HELPER: Build full dataset preview payload ───────────────────────
+def _build_preview(df: pd.DataFrame, label: str = "dataset") -> dict:
+    """
+    Returns full dataset as JSON for frontend table rendering.
+    Also includes columns list and shape so frontend can build headers.
+    Capped at 2000 rows max to protect browser performance.
+    """
+    MAX_ROWS = 2000
+    total_rows = len(df)
+    preview_df = df.head(MAX_ROWS).fillna("")
+
+    return {
+        "label": label,
+        "columns": list(df.columns),
+        "dtypes": {col: str(dtype) for col, dtype in df.dtypes.items()},
+        "shape": {"rows": total_rows, "columns": len(df.columns)},
+        "rows": _clean_json(preview_df.to_dict(orient="records")),
+        "truncated": total_rows > MAX_ROWS,
+        "showing": min(total_rows, MAX_ROWS),
+    }
+
 # ─────────────────────────────────────────────
 #  HEALTH CHECK
 # ─────────────────────────────────────────────
@@ -103,10 +124,14 @@ async def process_dataframe(df: pd.DataFrame, source: str):
         adv_stats = AdvancedStatistics()
         num_cols = state.cleaned_df.select_dtypes(include=[np.number]).columns.tolist()
         if num_cols:
-            state.stats['summary'] = {col: adv_stats.perform_distribution_analysis(state.cleaned_df, col) for col in num_cols[:5]}
+            state.stats['summary'] = {
+                col: adv_stats.perform_distribution_analysis(state.cleaned_df, col)
+                for col in num_cols[:5]
+            }
         insights_gen = InsightsGenerator()
         state.insights = insights_gen.generate_insights(state.cleaned_df)
         state.versioning.create_version(state.cleaned_df, f"Data sync from {source}")
+
         return {
             "status": "success",
             "message": "Dataset fully processed and optimized",
@@ -116,6 +141,11 @@ async def process_dataframe(df: pd.DataFrame, source: str):
                 "missing_percentage": f"{state.insights['dataset_overview'].get('missing_percentage', 0):.2f}%",
                 "dataset_status": "optimized",
                 "source": source
+            },
+            # ── ✅ FULL DATASET PREVIEWS (raw + cleaned) ──────────────────
+            "preview": {
+                "raw":     _build_preview(df,              label="raw"),
+                "cleaned": _build_preview(state.cleaned_df, label="cleaned"),
             }
         }
     except Exception as e:
@@ -134,6 +164,22 @@ async def upload_dataset(file: UploadFile = File(...)):
         return await process_dataframe(df, file.filename)
     except Exception as e:
         return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+
+# ── ✅ NEW ENDPOINT: GET /preview/raw ─────────────────────────────────────
+@app.get("/preview/raw")
+async def get_raw_preview():
+    """Returns the full raw (pre-cleaning) dataset for table display."""
+    if state.df is None:
+        raise HTTPException(status_code=400, detail="No dataset uploaded")
+    return _build_preview(state.df, label="raw")
+
+# ── ✅ NEW ENDPOINT: GET /preview/cleaned ─────────────────────────────────
+@app.get("/preview/cleaned")
+async def get_cleaned_preview():
+    """Returns the full cleaned dataset for table display."""
+    if state.cleaned_df is None:
+        raise HTTPException(status_code=400, detail="No cleaned dataset available")
+    return _build_preview(state.cleaned_df, label="cleaned")
 
 # ─────────────────────────────────────────────
 #  COLUMNS
@@ -162,7 +208,12 @@ async def get_cleaning_report():
         "before_shape": list(state.df.shape) if state.df is not None else None,
         "after_shape": list(state.cleaned_df.shape),
         "columns": state.cleaned_df.columns.tolist(),
-        "dtypes": {col: str(dtype) for col, dtype in state.cleaned_df.dtypes.items()}
+        "dtypes": {col: str(dtype) for col, dtype in state.cleaned_df.dtypes.items()},
+        # ── ✅ FULL DATASET PREVIEWS in clean report ──────────────────────
+        "preview": {
+            "before": _build_preview(state.df,              label="before_cleaning") if state.df is not None else None,
+            "after":  _build_preview(state.cleaned_df,      label="after_cleaning"),
+        }
     }
 
 @app.post("/clean/run")
@@ -183,7 +234,12 @@ async def run_cleaning(payload: Dict[str, Any] = Body(...)):
         return {
             "status": "success",
             "cleaning_report": _clean_json(state.cleaning_report),
-            "after_shape": list(state.cleaned_df.shape)
+            "after_shape": list(state.cleaned_df.shape),
+            # ── ✅ FULL DATASET PREVIEWS after cleaning run ───────────────
+            "preview": {
+                "before": _build_preview(state.df,              label="before_cleaning"),
+                "after":  _build_preview(state.cleaned_df,      label="after_cleaning"),
+            }
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Cleaning failed: {str(e)}")
@@ -213,24 +269,11 @@ async def get_dashboard_data():
     if cat_cols and num_cols:
         cat_grp = state.cleaned_df.groupby(cat_cols[0])[num_cols[0]].mean()
         category_data = [{"name": str(k), "value": round(float(v), 2)} for k, v in cat_grp.head(10).items()]
-    # Chart-ready payload for frontend (API contract: trend chart data, data summary)
     charts = []
     if trend_data:
-        charts.append({
-            "type": "line",
-            "title": "Trend",
-            "xKey": "id",
-            "yKey": "value",
-            "data": trend_data,
-        })
+        charts.append({"type": "line", "title": "Trend", "xKey": "id", "yKey": "value", "data": trend_data})
     if category_data:
-        charts.append({
-            "type": "bar",
-            "title": "Category",
-            "xKey": "name",
-            "yKey": "value",
-            "data": category_data,
-        })
+        charts.append({"type": "bar", "title": "Category", "xKey": "name", "yKey": "value", "data": category_data})
     return {
         "metrics": kpis,
         "trends": trend_data,
@@ -243,7 +286,7 @@ async def get_dashboard_data():
     }
 
 # ─────────────────────────────────────────────
-#  INSIGHTS (GET /insights and GET /insight per API contract)
+#  INSIGHTS
 # ─────────────────────────────────────────────
 @app.get("/insights")
 async def get_ai_insights():
@@ -261,10 +304,8 @@ async def get_ai_insights():
         "dataset_overview": clean.get('dataset_overview', {}),
     }
 
-
 @app.get("/insight")
 async def get_ai_insight_alias():
-    """Alias for /insights per API contract (GET /insight)."""
     return await get_ai_insights()
 
 # ─────────────────────────────────────────────
@@ -315,13 +356,13 @@ async def apply_transform(payload: Dict[str, Any] = Body(...)):
     try:
         state.pipeline.add_transformation(transform_type, params)
         state.cleaned_df, _ = state.pipeline.apply_pipeline(state.cleaned_df)
-        preview = state.cleaned_df.head(10).fillna("").to_dict(orient="records")
         return {
             "status": "success",
             "pipeline_steps": len(state.pipeline.transformations),
             "shape": list(state.cleaned_df.shape),
-            "preview": _clean_json(preview),
-            "columns": state.cleaned_df.columns.tolist()
+            "columns": state.cleaned_df.columns.tolist(),
+            # ── ✅ FULL PREVIEW after transform ───────────────────────────
+            "preview": _build_preview(state.cleaned_df, label="after_transform"),
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Transform failed: {str(e)}")
@@ -344,11 +385,13 @@ async def clear_transform_pipeline():
     return {
         "status": "success",
         "message": "Pipeline cleared and data reset to post-cleaning state",
-        "shape": list(state.cleaned_df.shape)
+        "shape": list(state.cleaned_df.shape),
+        # ── ✅ FULL PREVIEW after pipeline reset ──────────────────────────
+        "preview": _build_preview(state.cleaned_df, label="after_reset"),
     }
 
 # ─────────────────────────────────────────────
-#  CHAT
+#  CHAT  (✅ passes full df to chatbot)
 # ─────────────────────────────────────────────
 @app.post("/chat")
 async def chat_with_data(payload: Dict[str, str] = Body(...)):
@@ -363,14 +406,20 @@ async def chat_with_data(payload: Dict[str, str] = Body(...)):
             state.chatbot = LLaMAChat()
         except Exception as e:
             return {"reply": f"AI Engine is currently unavailable: {str(e)}"}
-    # Prepare context for the chatbot
+
+    df = state.cleaned_df  # always use cleaned version
+
+    # ── ✅ UPGRADED CONTEXT: passes full df so chatbot executes real queries ─
     context = {
-        "shape": state.cleaned_df.shape,
-        "columns": state.cleaned_df.columns.tolist(),
-        "missing_values": state.cleaned_df.isnull().sum().to_dict(),
-        "summary": state.insights.get('dataset_overview', {}),
-        "sample_data": state.cleaned_df.head(5).to_dict(orient='records')
+        "df":             df,                                               # ← full DataFrame
+        "shape":          df.shape,
+        "columns":        df.columns.tolist(),
+        "dtypes":         {col: str(dtype) for col, dtype in df.dtypes.items()},
+        "missing_values": df.isnull().sum().to_dict(),
+        "summary":        state.insights.get('dataset_overview', {}),
+        "sample_data":    _clean_json(df.head(5).fillna("").to_dict(orient='records')),
     }
+
     try:
         response = state.chatbot.generate_response(user_message, context)
         return {"reply": response}

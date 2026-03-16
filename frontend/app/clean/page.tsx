@@ -2,11 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Sparkles, CheckCircle2, AlertTriangle, RefreshCw, Database, Trash2, ArrowRight, BarChart2 } from "lucide-react";
+import { Sparkles, CheckCircle2, AlertTriangle, RefreshCw, Database, Trash2, ArrowRight, BarChart2, Download, Table } from "lucide-react";
 
 import { API_BASE } from "@/lib/api";
 
 const API = API_BASE;
+
+const SEL = "w-full mt-1 bg-[#0f0f1a] border border-white/20 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary";
+const OPT = "bg-[#0f0f1a] text-white";
 
 interface CleaningReport {
     summary?: { original_shape?: number[]; final_shape?: number[]; rows_removed?: number; cleaning_efficiency?: string };
@@ -22,15 +25,30 @@ interface CleanData {
     after_shape: number[];
     columns: string[];
     dtypes: Record<string, string>;
+    preview?: {
+        after?: {
+            columns: string[];
+            rows: Record<string, string | number | null>[];
+        };
+    };
+}
+
+interface PreviewData {
+    columns: string[];
+    rows: Record<string, string | number | null>[];
+    shape: { rows: number; columns: number };
 }
 
 export default function CleanPage() {
     const [data, setData] = useState<CleanData | null>(null);
+    const [preview, setPreview] = useState<PreviewData | null>(null);
     const [loading, setLoading] = useState(true);
+    const [previewLoading, setPreviewLoading] = useState(false);
     const [rerunning, setRerunning] = useState(false);
+    const [downloading, setDownloading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [showPreview, setShowPreview] = useState(false);
 
-    // Re-run options
     const [removeDuplicates, setRemoveDuplicates] = useState(true);
     const [detectOutliers, setDetectOutliers] = useState(true);
     const [normalize, setNormalize] = useState(false);
@@ -50,6 +68,19 @@ export default function CleanPage() {
         } finally { setLoading(false); }
     };
 
+    const fetchPreview = async () => {
+        setPreviewLoading(true);
+        try {
+            const res = await fetch(`${API}/preview/cleaned`);
+            if (!res.ok) throw new Error("Failed to fetch preview");
+            const json = await res.json();
+            setPreview(json);
+            setShowPreview(true);
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : "Preview failed");
+        } finally { setPreviewLoading(false); }
+    };
+
     const runCleaning = async () => {
         setRerunning(true);
         try {
@@ -60,9 +91,42 @@ export default function CleanPage() {
             });
             if (!res.ok) throw new Error("Cleaning failed");
             await fetchCleanData();
+            // Refresh preview if it was already open
+            if (showPreview) await fetchPreview();
         } catch (e: unknown) {
             setError(e instanceof Error ? e.message : "Cleaning failed");
         } finally { setRerunning(false); }
+    };
+
+    const downloadCSV = async () => {
+        setDownloading(true);
+        try {
+            const res = await fetch(`${API}/preview/cleaned`);
+            if (!res.ok) throw new Error("Failed to fetch cleaned data");
+            const json = await res.json();
+            const columns: string[] = json.columns || [];
+            const rows: Record<string, string | number | null>[] = json.rows || [];
+            const escape = (val: unknown) => {
+                const str = val === null || val === undefined ? "" : String(val);
+                return str.includes(",") || str.includes('"') || str.includes("\n")
+                    ? `"${str.replace(/"/g, '""')}"` : str;
+            };
+            const csvContent = [
+                columns.map(escape).join(","),
+                ...rows.map(row => columns.map(col => escape(row[col])).join(","))
+            ].join("\n");
+            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `cleaned_dataset_${new Date().toISOString().slice(0, 10)}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : "Download failed");
+        } finally { setDownloading(false); }
     };
 
     if (loading) return (
@@ -96,9 +160,33 @@ export default function CleanPage() {
     return (
         <div className="space-y-8">
             {/* Header */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                <h1 className="text-4xl font-bold mb-2"><span className="gradient-text">Data Cleaning</span></h1>
-                <p className="text-muted-foreground text-lg">Automated cleaning pipeline — remove noise, handle missing values, detect outliers</p>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex items-start justify-between flex-wrap gap-4">
+                <div>
+                    <h1 className="text-4xl font-bold mb-2"><span className="gradient-text">Data Cleaning</span></h1>
+                    <p className="text-muted-foreground text-lg">Automated cleaning pipeline — remove noise, handle missing values, detect outliers</p>
+                </div>
+                <div className="flex gap-3 flex-wrap">
+                    <button
+                        onClick={fetchPreview}
+                        disabled={previewLoading}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20 text-white text-sm font-semibold transition disabled:opacity-60"
+                    >
+                        {previewLoading
+                            ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Loading...</>
+                            : <><Table className="w-4 h-4 text-blue-400" /> Preview Dataset</>
+                        }
+                    </button>
+                    <button
+                        onClick={downloadCSV}
+                        disabled={downloading}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white text-sm font-semibold hover:opacity-90 transition disabled:opacity-60 shadow-lg shadow-green-900/30"
+                    >
+                        {downloading
+                            ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Downloading...</>
+                            : <><Download className="w-4 h-4" /> Download Cleaned CSV</>
+                        }
+                    </button>
+                </div>
             </motion.div>
 
             {/* Summary Stats */}
@@ -202,10 +290,9 @@ export default function CleanPage() {
                     <div className="space-y-4">
                         <div>
                             <label className="text-sm font-medium text-muted-foreground">Missing Value Strategy</label>
-                            <select value={missingStrategy} onChange={e => setMissingStrategy(e.target.value)}
-                                className="w-full mt-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                            <select value={missingStrategy} onChange={e => setMissingStrategy(e.target.value)} className={SEL}>
                                 {["Auto", "Drop rows", "Drop columns", "Fill with mean/mode", "Forward fill", "Backward fill"].map(s => (
-                                    <option key={s} value={s}>{s}</option>
+                                    <option key={s} value={s} className={OPT}>{s}</option>
                                 ))}
                             </select>
                         </div>
@@ -230,6 +317,54 @@ export default function CleanPage() {
                     </div>
                 </motion.div>
             </div>
+
+            {/* Dataset Preview */}
+            {showPreview && preview && (
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-6 rounded-xl">
+                    <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                        <h2 className="text-xl font-bold flex items-center gap-2">
+                            <Table className="w-5 h-5 text-blue-400" /> Cleaned Dataset Preview
+                        </h2>
+                        <div className="flex items-center gap-3">
+                            <span className="text-xs text-muted-foreground">
+                                Showing first {Math.min(preview.rows.length, 50)} of <span className="text-white font-semibold">{preview.shape.rows.toLocaleString()}</span> rows × <span className="text-white font-semibold">{preview.shape.columns}</span> columns
+                            </span>
+                            <button
+                                onClick={() => setShowPreview(false)}
+                                className="text-xs px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-muted-foreground transition"
+                            >
+                                Hide
+                            </button>
+                        </div>
+                    </div>
+                    <div className="overflow-x-auto rounded-lg border border-white/10">
+                        <table className="w-full text-xs">
+                            <thead>
+                                <tr className="bg-white/5 border-b border-white/10">
+                                    <th className="px-3 py-2.5 text-left text-muted-foreground font-semibold uppercase tracking-wider whitespace-nowrap w-10">#</th>
+                                    {preview.columns.map(col => (
+                                        <th key={col} className="px-3 py-2.5 text-left text-muted-foreground font-semibold uppercase tracking-wider whitespace-nowrap">
+                                            {col}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {preview.rows.slice(0, 50).map((row, i) => (
+                                    <tr key={i} className={`border-b border-white/5 ${i % 2 === 0 ? "bg-transparent" : "bg-white/[0.02]"} hover:bg-white/5 transition-colors`}>
+                                        <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
+                                        {preview.columns.map(col => (
+                                            <td key={col} className="px-3 py-2 whitespace-nowrap max-w-[160px] truncate">
+                                                {String(row[col] ?? "")}
+                                            </td>
+                                        ))}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </motion.div>
+            )}
         </div>
     );
 }

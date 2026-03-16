@@ -19,6 +19,9 @@ const TRANSFORM_LABELS: Record<TransformType, string> = {
     normalize_column: "Normalize Column", convert_type: "Convert Type", extract_datetime: "Extract Datetime",
 };
 
+const SEL = "w-full bg-[#0f0f1a] border border-white/20 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary appearance-none";
+const OPT = "bg-[#0f0f1a] text-white";
+
 export default function TransformPage() {
     const [cols, setCols] = useState<string[]>([]);
     const [numCols, setNumCols] = useState<string[]>([]);
@@ -32,7 +35,6 @@ export default function TransformPage() {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
-    // Params state per transform type
     const [filterCol, setFilterCol] = useState("");
     const [filterOp, setFilterOp] = useState("equals");
     const [filterVal, setFilterVal] = useState("");
@@ -88,8 +90,8 @@ export default function TransformPage() {
             });
             if (!res.ok) { const e = await res.json(); throw new Error(e.detail || "Failed"); }
             const data = await res.json();
-            setPreview(data.preview || []);
-            setPreviewCols(data.columns || []);
+            setPreview(data.preview?.rows || []);
+            setPreviewCols(data.preview?.columns || data.columns || []);
             setShape(data.shape);
             const hist = await fetch(`${API}/transform/history`).then(r => r.json());
             setSteps(hist.steps || []);
@@ -126,80 +128,133 @@ export default function TransformPage() {
                         <div>
                             <label className="text-xs text-muted-foreground font-medium">Transform Type</label>
                             <div className="relative mt-1">
-                                <select value={selectedType} onChange={e => setSelectedType(e.target.value as TransformType)}
-                                    className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none">
-                                    {(Object.entries(TRANSFORM_LABELS) as [TransformType, string][]).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                                <select value={selectedType} onChange={e => setSelectedType(e.target.value as TransformType)} className={SEL}>
+                                    {(Object.entries(TRANSFORM_LABELS) as [TransformType, string][]).map(([k, v]) => (
+                                        <option key={k} value={k} className={OPT}>{v}</option>
+                                    ))}
                                 </select>
                                 <ChevronDown className="absolute right-2 top-2.5 w-4 h-4 text-muted-foreground pointer-events-none" />
                             </div>
                         </div>
 
-                        {/* Dynamic Params */}
                         {selectedType === "filter_rows" && (
                             <>
                                 <ColSelect label="Column" val={filterCol} set={setFilterCol} options={cols} />
-                                <div><label className="text-xs text-muted-foreground font-medium">Operator</label>
-                                    <div className="relative mt-1"><select value={filterOp} onChange={e => setFilterOp(e.target.value)}
-                                        className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm focus:outline-none appearance-none">
-                                        {["equals", "not_equals", "greater_than", "less_than", "contains", "not_contains", "is_null", "not_null"].map(o => <option key={o} value={o}>{o}</option>)}
-                                    </select><ChevronDown className="absolute right-2 top-2.5 w-4 h-4 text-muted-foreground pointer-events-none" /></div>
+                                <div>
+                                    <label className="text-xs text-muted-foreground font-medium">Operator</label>
+                                    <div className="relative mt-1">
+                                        <select value={filterOp} onChange={e => setFilterOp(e.target.value)} className={SEL}>
+                                            {["equals", "not_equals", "greater_than", "less_than", "contains", "not_contains", "is_null", "not_null"].map(o => (
+                                                <option key={o} value={o} className={OPT}>{o}</option>
+                                            ))}
+                                        </select>
+                                        <ChevronDown className="absolute right-2 top-2.5 w-4 h-4 text-muted-foreground pointer-events-none" />
+                                    </div>
                                 </div>
                                 <TextInput label="Value" val={filterVal} set={setFilterVal} placeholder="Enter filter value" />
                             </>
                         )}
-                        {selectedType === "drop_columns" && <TextInput label="Columns (comma-separated)" val={dropCols} set={setDropCols} placeholder="col1, col2, col3" />}
-                        {selectedType === "rename_column" && (<>
-                            <ColSelect label="Old Name" val={renameOld} set={setRenameOld} options={cols} />
-                            <TextInput label="New Name" val={renameNew} set={setRenameNew} placeholder="new_column_name" />
-                        </>)}
-                        {selectedType === "sort_data" && (<>
-                            <ColSelect label="Sort Column" val={sortCol} set={setSortCol} options={cols} />
-                            <label className="flex items-center gap-3 cursor-pointer text-sm mt-1">
-                                <div onClick={() => setSortAsc(!sortAsc)} className={`w-10 h-5 rounded-full transition-colors relative ${sortAsc ? "bg-primary" : "bg-white/20"}`}>
-                                    <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${sortAsc ? "translate-x-5" : "translate-x-0.5"}`} />
+
+                        {selectedType === "drop_columns" && (
+                            <TextInput label="Columns (comma-separated)" val={dropCols} set={setDropCols} placeholder="col1, col2, col3" />
+                        )}
+
+                        {selectedType === "rename_column" && (
+                            <>
+                                <ColSelect label="Old Name" val={renameOld} set={setRenameOld} options={cols} />
+                                <TextInput label="New Name" val={renameNew} set={setRenameNew} placeholder="new_column_name" />
+                            </>
+                        )}
+
+                        {selectedType === "sort_data" && (
+                            <>
+                                <ColSelect label="Sort Column" val={sortCol} set={setSortCol} options={cols} />
+                                <label className="flex items-center gap-3 cursor-pointer text-sm mt-1">
+                                    <div onClick={() => setSortAsc(!sortAsc)} className={`w-10 h-5 rounded-full transition-colors relative ${sortAsc ? "bg-primary" : "bg-white/20"}`}>
+                                        <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${sortAsc ? "translate-x-5" : "translate-x-0.5"}`} />
+                                    </div>
+                                    Ascending
+                                </label>
+                            </>
+                        )}
+
+                        {selectedType === "group_aggregate" && (
+                            <>
+                                <ColSelect label="Group By" val={grpBy} set={setGrpBy} options={cols} />
+                                <ColSelect label="Aggregate Column" val={grpAggCol} set={setGrpAggCol} options={numCols} />
+                                <div>
+                                    <label className="text-xs text-muted-foreground font-medium">Function</label>
+                                    <div className="relative mt-1">
+                                        <select value={grpFn} onChange={e => setGrpFn(e.target.value)} className={SEL}>
+                                            {["mean", "sum", "count", "min", "max"].map(f => (
+                                                <option key={f} value={f} className={OPT}>{f}</option>
+                                            ))}
+                                        </select>
+                                        <ChevronDown className="absolute right-2 top-2.5 w-4 h-4 text-muted-foreground pointer-events-none" />
+                                    </div>
                                 </div>
-                                Ascending
-                            </label>
-                        </>)}
-                        {selectedType === "group_aggregate" && (<>
-                            <ColSelect label="Group By" val={grpBy} set={setGrpBy} options={cols} />
-                            <ColSelect label="Aggregate Column" val={grpAggCol} set={setGrpAggCol} options={numCols} />
-                            <div><label className="text-xs text-muted-foreground font-medium">Function</label>
-                                <div className="relative mt-1"><select value={grpFn} onChange={e => setGrpFn(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm focus:outline-none appearance-none">
-                                    {["mean", "sum", "count", "min", "max"].map(f => <option key={f} value={f}>{f}</option>)}
-                                </select><ChevronDown className="absolute right-2 top-2.5 w-4 h-4 text-muted-foreground pointer-events-none" /></div>
-                            </div>
-                        </>)}
-                        {selectedType === "bin_column" && (<>
-                            <ColSelect label="Column" val={binCol} set={setBinCol} options={numCols} />
-                            <div><label className="text-xs text-muted-foreground font-medium">Number of Bins: {binCount}</label>
-                                <input type="range" min={2} max={20} value={binCount} onChange={e => setBinCount(Number(e.target.value))} className="w-full mt-1 accent-primary" />
-                            </div>
-                        </>)}
-                        {selectedType === "normalize_column" && (<>
-                            <ColSelect label="Column" val={normCol} set={setNormCol} options={numCols} />
-                            <div><label className="text-xs text-muted-foreground font-medium">Method</label>
-                                <div className="relative mt-1"><select value={normMethod} onChange={e => setNormMethod(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm focus:outline-none appearance-none">
-                                    <option value="minmax">Min-Max (0-1)</option><option value="zscore">Z-Score</option>
-                                </select><ChevronDown className="absolute right-2 top-2.5 w-4 h-4 text-muted-foreground pointer-events-none" /></div>
-                            </div>
-                        </>)}
-                        {selectedType === "convert_type" && (<>
-                            <ColSelect label="Column" val={convCol} set={setConvCol} options={cols} />
-                            <div><label className="text-xs text-muted-foreground font-medium">New Type</label>
-                                <div className="relative mt-1"><select value={convType} onChange={e => setConvType(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm focus:outline-none appearance-none">
-                                    {["int", "float", "string", "datetime", "category"].map(t => <option key={t} value={t}>{t}</option>)}
-                                </select><ChevronDown className="absolute right-2 top-2.5 w-4 h-4 text-muted-foreground pointer-events-none" /></div>
-                            </div>
-                        </>)}
-                        {selectedType === "extract_datetime" && (<>
-                            <ColSelect label="Datetime Column" val={dtCol} set={setDtCol} options={cols} />
-                            <div><label className="text-xs text-muted-foreground font-medium">Component</label>
-                                <div className="relative mt-1"><select value={dtComp} onChange={e => setDtComp(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm focus:outline-none appearance-none">
-                                    {["year", "month", "day", "dayofweek", "hour", "quarter"].map(c => <option key={c} value={c}>{c}</option>)}
-                                </select><ChevronDown className="absolute right-2 top-2.5 w-4 h-4 text-muted-foreground pointer-events-none" /></div>
-                            </div>
-                        </>)}
+                            </>
+                        )}
+
+                        {selectedType === "bin_column" && (
+                            <>
+                                <ColSelect label="Column" val={binCol} set={setBinCol} options={numCols} />
+                                <div>
+                                    <label className="text-xs text-muted-foreground font-medium">Number of Bins: {binCount}</label>
+                                    <input type="range" min={2} max={20} value={binCount} onChange={e => setBinCount(Number(e.target.value))} className="w-full mt-1 accent-primary" />
+                                </div>
+                            </>
+                        )}
+
+                        {selectedType === "normalize_column" && (
+                            <>
+                                <ColSelect label="Column" val={normCol} set={setNormCol} options={numCols} />
+                                <div>
+                                    <label className="text-xs text-muted-foreground font-medium">Method</label>
+                                    <div className="relative mt-1">
+                                        <select value={normMethod} onChange={e => setNormMethod(e.target.value)} className={SEL}>
+                                            <option value="minmax" className={OPT}>Min-Max (0-1)</option>
+                                            <option value="zscore" className={OPT}>Z-Score</option>
+                                        </select>
+                                        <ChevronDown className="absolute right-2 top-2.5 w-4 h-4 text-muted-foreground pointer-events-none" />
+                                    </div>
+                                </div>
+                            </>
+                        )}
+
+                        {selectedType === "convert_type" && (
+                            <>
+                                <ColSelect label="Column" val={convCol} set={setConvCol} options={cols} />
+                                <div>
+                                    <label className="text-xs text-muted-foreground font-medium">New Type</label>
+                                    <div className="relative mt-1">
+                                        <select value={convType} onChange={e => setConvType(e.target.value)} className={SEL}>
+                                            {["int", "float", "string", "datetime", "category"].map(t => (
+                                                <option key={t} value={t} className={OPT}>{t}</option>
+                                            ))}
+                                        </select>
+                                        <ChevronDown className="absolute right-2 top-2.5 w-4 h-4 text-muted-foreground pointer-events-none" />
+                                    </div>
+                                </div>
+                            </>
+                        )}
+
+                        {selectedType === "extract_datetime" && (
+                            <>
+                                <ColSelect label="Datetime Column" val={dtCol} set={setDtCol} options={cols} />
+                                <div>
+                                    <label className="text-xs text-muted-foreground font-medium">Component</label>
+                                    <div className="relative mt-1">
+                                        <select value={dtComp} onChange={e => setDtComp(e.target.value)} className={SEL}>
+                                            {["year", "month", "day", "dayofweek", "hour", "quarter"].map(c => (
+                                                <option key={c} value={c} className={OPT}>{c}</option>
+                                            ))}
+                                        </select>
+                                        <ChevronDown className="absolute right-2 top-2.5 w-4 h-4 text-muted-foreground pointer-events-none" />
+                                    </div>
+                                </div>
+                            </>
+                        )}
 
                         <button onClick={applyTransform} disabled={applying}
                             className="w-full py-2.5 rounded-lg bg-gradient-to-r from-primary to-secondary text-white font-semibold flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-60">
@@ -266,12 +321,16 @@ export default function TransformPage() {
 }
 
 function ColSelect({ label, val, set, options }: { label: string; val: string; set: (v: string) => void; options: string[] }) {
+    const SEL = "w-full bg-[#0f0f1a] border border-white/20 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary appearance-none";
+    const OPT = "bg-[#0f0f1a] text-white";
     return (
         <div>
             <label className="text-xs text-muted-foreground font-medium">{label}</label>
             <div className="relative mt-1">
-                <select value={val} onChange={e => set(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none">
-                    {options.map(o => <option key={o} value={o}>{o}</option>)}
+                <select value={val} onChange={e => set(e.target.value)} className={SEL}>
+                    {options.map(o => (
+                        <option key={o} value={o} className={OPT}>{o}</option>
+                    ))}
                 </select>
                 <ChevronDown className="absolute right-2 top-2.5 w-4 h-4 text-muted-foreground pointer-events-none" />
             </div>
@@ -284,7 +343,7 @@ function TextInput({ label, val, set, placeholder }: { label: string; val: strin
         <div>
             <label className="text-xs text-muted-foreground font-medium">{label}</label>
             <input type="text" value={val} onChange={e => set(e.target.value)} placeholder={placeholder}
-                className="w-full mt-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+                className="w-full mt-1 bg-[#0f0f1a] border border-white/20 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary" />
         </div>
     );
 }

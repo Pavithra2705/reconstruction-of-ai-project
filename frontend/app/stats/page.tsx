@@ -18,6 +18,9 @@ interface DistInfo {
 interface HypothesisResult { [key: string]: { test?: string; statistic?: number; p_value?: number; significant?: boolean; interpretation?: string; correlation?: number; error?: string } }
 interface AnomalyResult { method?: string; total_anomalies?: number; anomaly_percentage?: number; contamination_rate?: number; error?: string }
 
+const selectClass = "w-full bg-[#0f0f1a] border border-white/20 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary appearance-none";
+const optionClass = "bg-[#0f0f1a] text-white";
+
 export default function StatsPage() {
     const [distributions, setDistributions] = useState<Record<string, DistInfo>>({});
     const [numCols, setNumCols] = useState<string[]>([]);
@@ -25,13 +28,11 @@ export default function StatsPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Hypothesis
     const [col1, setCol1] = useState("");
     const [col2, setCol2] = useState("");
     const [hypoResult, setHypoResult] = useState<HypothesisResult | null>(null);
     const [hypoLoading, setHypoLoading] = useState(false);
 
-    // Anomaly
     const [anomalyMethod, setAnomalyMethod] = useState("isolation_forest");
     const [contamination, setContamination] = useState(0.05);
     const [anomalyResult, setAnomalyResult] = useState<AnomalyResult | null>(null);
@@ -140,9 +141,10 @@ export default function StatsPage() {
                         <div>
                             <label className="text-xs text-muted-foreground font-medium">Column 1 (required)</label>
                             <div className="relative mt-1">
-                                <select value={col1} onChange={e => setCol1(e.target.value)}
-                                    className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none">
-                                    {allCols.map(c => <option key={c} value={c}>{c}</option>)}
+                                <select value={col1} onChange={e => setCol1(e.target.value)} className={selectClass}>
+                                    {allCols.map(c => (
+                                        <option key={c} value={c} className={optionClass}>{c}</option>
+                                    ))}
                                 </select>
                                 <ChevronDown className="absolute right-2 top-2.5 w-4 h-4 text-muted-foreground pointer-events-none" />
                             </div>
@@ -150,10 +152,11 @@ export default function StatsPage() {
                         <div>
                             <label className="text-xs text-muted-foreground font-medium">Column 2 (optional — enables 2-sample tests)</label>
                             <div className="relative mt-1">
-                                <select value={col2} onChange={e => setCol2(e.target.value)}
-                                    className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none">
-                                    <option value="">— Single column test —</option>
-                                    {allCols.map(c => <option key={c} value={c}>{c}</option>)}
+                                <select value={col2} onChange={e => setCol2(e.target.value)} className={selectClass}>
+                                    <option value="" className={optionClass}>— Single column test —</option>
+                                    {allCols.map(c => (
+                                        <option key={c} value={c} className={optionClass}>{c}</option>
+                                    ))}
                                 </select>
                                 <ChevronDown className="absolute right-2 top-2.5 w-4 h-4 text-muted-foreground pointer-events-none" />
                             </div>
@@ -189,11 +192,10 @@ export default function StatsPage() {
                         <div>
                             <label className="text-xs text-muted-foreground font-medium">Detection Method</label>
                             <div className="relative mt-1">
-                                <select value={anomalyMethod} onChange={e => setAnomalyMethod(e.target.value)}
-                                    className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none">
-                                    <option value="isolation_forest">Isolation Forest (ML-based)</option>
-                                    <option value="statistical">Statistical (Z-score)</option>
-                                    <option value="dbscan">DBSCAN Clustering</option>
+                                <select value={anomalyMethod} onChange={e => setAnomalyMethod(e.target.value)} className={selectClass}>
+                                    <option value="isolation_forest" className={optionClass}>Isolation Forest (ML-based)</option>
+                                    <option value="statistical" className={optionClass}>Statistical (Z-score)</option>
+                                    <option value="dbscan" className={optionClass}>DBSCAN Clustering</option>
                                 </select>
                                 <ChevronDown className="absolute right-2 top-2.5 w-4 h-4 text-muted-foreground pointer-events-none" />
                             </div>
